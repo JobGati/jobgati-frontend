@@ -6,7 +6,7 @@ import {
     ChevronRight, PlusSquare, CheckCircle2, Building2
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { getPostedJobs, getApplicants } from "../services/api";
+import { getPostedJobs, getApplicants, getPartTimeApplicants, updatePartTimeApplicantStatus } from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 
 const MOCK_JOBS = [
@@ -23,6 +23,8 @@ const EmployerDashboard = () => {
     const [selectedJob, setSelectedJob] = useState(null);
     const [applicants, setApplicants] = useState([]);
     const [loadingApplicants, setLoadingApplicants] = useState(false);
+    const [partTimeApplicants, setPartTimeApplicants] = useState([]);
+    const [loadingPartTime, setLoadingPartTime] = useState(true);
 
     useEffect(() => {
         const fetchJobs = async () => {
@@ -37,6 +39,31 @@ const EmployerDashboard = () => {
         };
         fetchJobs();
     }, [token]);
+
+    useEffect(() => {
+        const fetchPartTime = async () => {
+            try {
+                const data = await getPartTimeApplicants(token);
+                setPartTimeApplicants(data.applicants || []);
+            } catch (err) {
+                console.error("Failed to fetch part-time applicants");
+            } finally {
+                setLoadingPartTime(false);
+            }
+        };
+        fetchPartTime();
+    }, [token]);
+
+    const handlePartTimeStatus = async (appId, status) => {
+        try {
+            await updatePartTimeApplicantStatus(token, appId, status);
+            setPartTimeApplicants(prev =>
+                prev.map(a => a._id === appId ? { ...a, status } : a)
+            );
+        } catch (err) {
+            console.error("Failed to update status");
+        }
+    };
 
     const handleJobClick = async (job) => {
         if (selectedJob?._id === job._id) {
@@ -207,6 +234,108 @@ const EmployerDashboard = () => {
                         </div>
                     )}
                 </div>
+                {/* Part-Time Applicants */}
+                <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-sm p-10 mt-8 mb-12">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h2 className="text-2xl font-bold text-black tracking-tight">Part-Time Applicants</h2>
+                            <p className="text-gray-500 text-sm mt-1 font-medium">Job seekers who applied via Part-Time Jobs section.</p>
+                        </div>
+                        <span className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-xs font-black uppercase tracking-wider">
+                            {partTimeApplicants.length} total
+                        </span>
+                    </div>
+
+                    {loadingPartTime ? (
+                        <div className="text-center py-12 text-gray-400 font-semibold">Loading applicants...</div>
+                    ) : partTimeApplicants.length === 0 ? (
+                        <div className="text-center py-12">
+                            <Clock className="text-gray-300 mx-auto mb-4" size={48} />
+                            <p className="text-gray-400 font-semibold">No part-time applications yet.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {partTimeApplicants.map((app) => (
+                                <div key={app._id} className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
+                                    <div className="flex items-start justify-between gap-4">
+                                        {/* Candidate info */}
+                                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-lg flex-shrink-0">
+                                                {app.user?.name?.charAt(0)?.toUpperCase() || "?"}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h5 className="font-bold text-black truncate">{app.user?.name || "Unknown"}</h5>
+                                                <p className="text-xs text-gray-500 font-medium truncate">{app.user?.email}</p>
+                                                {app.phone && (
+                                                    <p className="text-xs text-gray-500 font-medium mt-0.5">📞 {app.phone}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Job details */}
+                                        <div className="hidden md:block flex-1 min-w-0">
+                                            <p className="font-bold text-black text-sm truncate">{app.jobTitle}</p>
+                                            <p className="text-xs text-gray-500 font-medium mt-0.5">{app.company} · {app.location}</p>
+                                            <div className="flex gap-3 mt-1 text-xs text-gray-400 font-semibold">
+                                                <span>⏱ {app.hours}</span>
+                                                <span className="font-bold text-black">{app.pay}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Match + Status + Actions */}
+                                        <div className="flex items-center gap-4 flex-shrink-0">
+                                            <div className="text-center">
+                                                <p className="text-blue-600 font-black text-sm">{app.matchScore}%</p>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Match</p>
+                                            </div>
+
+                                            <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border ${
+                                                app.status === 'shortlisted' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                app.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                            }`}>
+                                                {app.status}
+                                            </span>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => navigate(`/employer/candidates/${app.user?._id}`)}
+                                                    className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl hover:scale-105 active:scale-95 transition"
+                                                >
+                                                    View
+                                                </button>
+                                                {app.status === 'applied' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handlePartTimeStatus(app._id, 'shortlisted')}
+                                                            className="px-3 py-2 bg-green-50 text-green-700 border border-green-100 text-xs font-bold rounded-xl hover:bg-green-100 transition"
+                                                        >
+                                                            ✓
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handlePartTimeStatus(app._id, 'rejected')}
+                                                            className="px-3 py-2 bg-red-50 text-red-600 border border-red-100 text-xs font-bold rounded-xl hover:bg-red-100 transition"
+                                                        >
+                                                            ✗
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Cover Note */}
+                                    {app.note && (
+                                        <div className="mt-4 px-4 py-3 bg-white rounded-2xl border border-gray-100 text-sm text-gray-600 font-medium italic">
+                                            "{app.note}"
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
             </main>
         </div>
     );

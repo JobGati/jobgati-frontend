@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
-import { getJobs } from '../services/api';
+import { getJobs, applyPartTime } from '../services/api';
 import {
   Home, UserCircle, Target, LogOut, Mail, Eye, Zap,
   Target as MatchIcon, MapPin, CheckCircle2, Flame,
   User, LayoutGrid, Award, BookOpen, Clock, Building2, ChevronRight,
-  ShoppingBag, Truck, Smartphone, Briefcase, Lock
+  ShoppingBag, Truck, Smartphone, Briefcase, Lock, Phone, X, Send
 } from 'lucide-react';
 
 import { Sidebar, Tag, MetricCard, ProgressBar } from '../components/HelperComponents';
@@ -131,6 +132,320 @@ const ApplyOptionsSection = () => {
   );
 };
 
+// --- PART-TIME JOB CARD ---
+const PART_TIME_JOBS = [
+  {
+    id: 1,
+    title: "Evening Store Assistant",
+    company: "Reliance Retail",
+    location: "Sector 18, Noida",
+    hours: "5 PM – 9 PM",
+    pay: "₹8k – ₹12k/month",
+    match: 88,
+    icon: ShoppingBag,
+  },
+  {
+    id: 2,
+    title: "Weekend Delivery Partner",
+    company: "Swiggy",
+    location: "Noida Sector 62",
+    hours: "Sat – Sun",
+    pay: "₹600/day",
+    match: 92,
+    icon: Truck,
+  },
+  {
+    id: 3,
+    title: "Part-Time Data Entry Operator",
+    company: "Local Service Hub",
+    location: "Noida Extension",
+    hours: "4 hrs/day",
+    pay: "₹10k/month",
+    match: 76,
+    icon: Smartphone,
+  },
+];
+
+// --- APPLY MODAL ---
+const PartTimeApplyModal = ({ job, user, token, onClose, onSuccess }) => {
+  const [form, setForm] = useState({
+    name: user?.name || '',
+    phone: '',
+    note: '',
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.phone.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await applyPartTime(token, {
+        jobTitle: job.title,
+        company: job.company,
+        location: job.location,
+        hours: job.hours,
+        pay: job.pay,
+        phone: form.phone.trim(),
+        note: form.note.trim(),
+        matchScore: job.match,
+      });
+      setSubmitted(true);
+      setTimeout(() => {
+        onSuccess(job.id);
+        onClose();
+      }, 2200);
+    } catch (err) {
+      setError(err.message || 'Failed to submit. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
+      >
+        <motion.div
+          key="modal"
+          initial={{ opacity: 0, scale: 0.92, y: 24 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.92, y: 24 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden"
+        >
+          {!submitted ? (
+            <>
+              {/* Modal Header */}
+              <div className="px-8 pt-8 pb-6 border-b border-gray-100">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                      Part-Time
+                    </span>
+                    <h2 className="text-2xl font-black text-black mt-3 leading-tight">{job.title}</h2>
+                    <p className="text-sm font-semibold text-gray-500 mt-1">{job.company} &nbsp;·&nbsp; {job.location}</p>
+                  </div>
+                  <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-black transition-colors mt-1">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="flex gap-4 mt-4 text-xs text-gray-500 font-semibold">
+                  <span className="flex items-center gap-1"><Clock size={12} />{job.hours}</span>
+                  <span className="flex items-center gap-1"><MapPin size={12} />{job.location}</span>
+                  <span className="font-extrabold text-black">{job.pay}</span>
+                </div>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-semibold focus:outline-none focus:border-black transition-colors"
+                    placeholder="Your full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Phone Number <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <Phone size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      required
+                      className="w-full pl-10 pr-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-semibold focus:outline-none focus:border-black transition-colors"
+                      placeholder="+91 98765 43210"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Why are you a good fit? <span className="text-gray-300">(optional)</span></label>
+                  <textarea
+                    rows={3}
+                    value={form.note}
+                    onChange={(e) => setForm({ ...form, note: e.target.value })}
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium focus:outline-none focus:border-black transition-colors resize-none"
+                    placeholder="Briefly describe your availability or experience..."
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 py-3.5 text-sm font-bold text-gray-500 hover:text-black rounded-2xl border border-gray-100 hover:border-gray-300 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3.5 bg-black text-white text-sm font-black rounded-2xl hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {submitting ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                        Sending...
+                      </span>
+                    ) : (
+                      <><Send size={15} /> Submit Application</>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
+            /* Success Screen */
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="px-8 py-14 flex flex-col items-center text-center"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+                className="w-20 h-20 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mb-6"
+              >
+                <CheckCircle2 size={40} className="text-green-500" />
+              </motion.div>
+              <h3 className="text-2xl font-black text-black mb-2">Application Sent!</h3>
+              <p className="text-gray-500 text-sm font-medium max-w-xs">
+                You've applied for <span className="font-bold text-black">{job.title}</span> at {job.company}. We'll notify you when they respond.
+              </p>
+            </motion.div>
+          )}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+// --- PART-TIME JOB CARD ---
+const PartTimeJobCard = ({ title, company, location, hours, pay, match, icon: Icon, applied, onApply }) => (
+  <div className={`group bg-white p-6 rounded-3xl border shadow-sm transition-all duration-200 flex flex-col gap-4 ${
+    applied ? 'border-green-200 bg-green-50/30' : 'border-gray-100 hover:border-black hover:shadow-md'
+  }`}>
+    {/* Top row: icon + badge */}
+    <div className="flex items-start justify-between">
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors duration-200 ${
+        applied ? 'bg-green-50 border-green-100 text-green-600' : 'bg-gray-50 border-gray-100 group-hover:bg-black group-hover:text-white'
+      }`}>
+        {Icon ? <Icon size={22} /> : <Briefcase size={22} />}
+      </div>
+      <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+        Part-Time
+      </span>
+    </div>
+
+    {/* Job title & company */}
+    <div>
+      <h4 className="font-bold text-black text-base leading-snug">{title}</h4>
+      <p className="text-sm font-semibold text-gray-700 mt-0.5">{company}</p>
+    </div>
+
+    {/* Details */}
+    <div className="flex flex-col gap-1.5 text-sm text-gray-500">
+      <span className="flex items-center gap-1.5">
+        <MapPin size={13} className="shrink-0" />
+        {location}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <Clock size={13} className="shrink-0" />
+        {hours}
+      </span>
+    </div>
+
+    {/* Bottom row: pay + match + apply */}
+    <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-auto">
+      <div>
+        <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Expected Pay</p>
+        <p className="text-sm font-extrabold text-black mt-0.5">{pay}</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col items-center">
+          <span className="text-xs text-gray-400 font-bold">Match</span>
+          <span className="text-blue-600 font-extrabold text-sm">{match}%</span>
+        </div>
+        {applied ? (
+          <span className="px-4 py-2 bg-green-50 text-green-600 border border-green-200 text-xs font-bold rounded-xl flex items-center gap-1">
+            <CheckCircle2 size={13} /> Applied
+          </span>
+        ) : (
+          <button
+            onClick={onApply}
+            className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl hover:bg-gray-800 active:scale-95 transition-all duration-150"
+          >
+            Apply
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+const PartTimeJobsSection = ({ user, token }) => {
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [appliedIds, setAppliedIds] = useState([]);
+
+  const handleSuccess = (jobId) => {
+    setAppliedIds((prev) => [...prev, jobId]);
+  };
+
+  return (
+    <section id="part-time-jobs" className="mt-10">
+      <div className="flex items-center justify-between mb-6 px-1">
+        <div>
+          <h2 className="text-2xl font-bold text-black tracking-tight">Part-Time Jobs Near You</h2>
+          <p className="text-gray-500 text-sm mt-1 font-medium">Flexible local work — on your schedule.</p>
+        </div>
+        <span className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer">View All →</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {PART_TIME_JOBS.map((job) => (
+          <PartTimeJobCard
+            key={job.id}
+            {...job}
+            applied={appliedIds.includes(job.id)}
+            onApply={() => setSelectedJob(job)}
+          />
+        ))}
+      </div>
+
+      {selectedJob && (
+        <PartTimeApplyModal
+          job={selectedJob}
+          user={user}
+          token={token}
+          onClose={() => setSelectedJob(null)}
+          onSuccess={handleSuccess}
+        />
+      )}
+    </section>
+  );
+};
+
 const LocalJobsGrid = ({ jobs, loading }) => (
   <section id="jobs-near-you" className="mt-12 mb-12">
     <div className="flex items-center justify-between mb-8 px-2">
@@ -197,6 +512,7 @@ const JobSeekerDashboard = () => {
 
         <ProfileCompletionSection user={user} profileCompletion={profileCompletion} isProfileUnlocked={isProfileUnlocked} />
         <ApplyOptionsSection />
+        <PartTimeJobsSection user={user} token={token} />
         <LocalJobsGrid jobs={jobs} loading={loading} />
 
       </main>

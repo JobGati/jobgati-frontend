@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home, UserCircle, Target, LogOut, MapPin, CheckCircle2,
   Flame, User, Award, BookOpen, LayoutGrid, Briefcase,
-  Users, PlusSquare, Building2
+  Users, PlusSquare, Building2, Clock
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -77,6 +77,27 @@ export const Sidebar = () => {
           label="Jobs"
           to="/insights"
         />
+
+        {/* Part-Time Jobs shortcut */}
+        <button
+          onClick={() => {
+            if (window.location.pathname !== '/dashboard') {
+              navigate('/dashboard');
+              setTimeout(() => {
+                document.getElementById('part-time-jobs')?.scrollIntoView({ behavior: 'smooth' });
+              }, 400);
+            } else {
+              document.getElementById('part-time-jobs')?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+          className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-colors text-gray-400 hover:text-black hover:bg-gray-100 group"
+        >
+          <Clock size={20} />
+          <span>Get Part-Time Job</span>
+          <span className="ml-auto text-[9px] bg-blue-50 text-blue-600 border border-blue-100 font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+            NEW
+          </span>
+        </button>
       </nav>
 
       <button

@@ -194,3 +194,29 @@ export const sendNotification = async (token, recipientId, title, message) => {
     });
     return handleResponse(res);
 };
+
+// ── Part-Time Jobs ────────────────────────────────────────
+export const applyPartTime = async (token, applicationData) => {
+    const res = await fetch(`${BASE_URL}/part-time/apply`, {
+        method: "POST",
+        headers: getHeaders(token),
+        body: JSON.stringify(applicationData),
+    });
+    return handleResponse(res);
+};
+
+export const getPartTimeApplicants = async (token) => {
+    const res = await fetch(`${BASE_URL}/employer/part-time-applicants`, {
+        headers: getHeaders(token),
+    });
+    return handleResponse(res);
+};
+
+export const updatePartTimeApplicantStatus = async (token, applicationId, status) => {
+    const res = await fetch(`${BASE_URL}/employer/part-time-applicants/${applicationId}/status`, {
+        method: "PUT",
+        headers: getHeaders(token),
+        body: JSON.stringify({ status }),
+    });
+    return handleResponse(res);
+};
